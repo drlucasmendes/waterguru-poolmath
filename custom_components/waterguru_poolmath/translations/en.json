@@ -4,20 +4,36 @@
     "step": {
       "user": {
         "title": "Connect WaterGuru sensors to PoolMath",
-        "description": "This uses PoolMath's unofficial mobile-app endpoint. Enter the complete Authorization header beginning with `Basic `.",
+        "description": "This uses PoolMath's unofficial mobile-app endpoint. Enter the complete Authorization header beginning with `Basic `. Required WaterGuru values are FC, pH, and temperature. All other selectors are optional.",
         "data": {
           "authorization": "PoolMath authorization header",
           "pool_id": "PoolMath pool ID",
-          "fc_entity": "WaterGuru free chlorine sensor",
-          "ph_entity": "WaterGuru pH sensor",
-          "temperature_entity": "WaterGuru water temperature sensor"
+          "fc_entity": "Free chlorine",
+          "ph_entity": "pH",
+          "temperature_entity": "Water temperature",
+          "cc_entity": "Combined chlorine",
+          "cya_entity": "CYA",
+          "ch_entity": "Calcium hardness",
+          "ta_entity": "Total alkalinity",
+          "salt_entity": "Salt",
+          "bor_entity": "Borates",
+          "tds_entity": "TDS",
+          "csi_entity": "CSI",
+          "total_hardness_entity": "Total hardness",
+          "phosphate_entity": "Phosphate",
+          "copper_entity": "Copper",
+          "iron_entity": "Iron"
         },
         "data_description": {
           "authorization": "Complete value, including the word Basic and the encoded credential.",
-          "pool_id": "UUID of the destination pool.",
-          "fc_entity": "Sensor whose numeric state is free chlorine in ppm.",
-          "ph_entity": "Sensor whose numeric state is pH.",
-          "temperature_entity": "Sensor whose state is the current water temperature."
+          "pool_id": "UUID of the destination PoolMath pool.",
+          "fc_entity": "Numeric free chlorine sensor in ppm.",
+          "ph_entity": "Numeric pH sensor.",
+          "temperature_entity": "Water temperature sensor. Celsius is converted to Fahrenheit.",
+          "total_hardness_entity": "Recorded in diagnostics only because PoolMath has no total-hardness field.",
+          "phosphate_entity": "Recorded in diagnostics only because PoolMath test logs have no phosphate field.",
+          "copper_entity": "Recorded in diagnostics only because PoolMath test logs have no copper field.",
+          "iron_entity": "Recorded in diagnostics only because PoolMath test logs have no iron field."
         }
       },
       "reauth_confirm": {
@@ -30,7 +46,8 @@
     },
     "error": {
       "authorization_format": "The value must begin with Basic followed by the encoded credential.",
-      "invalid_pool_id": "The pool ID does not look valid."
+      "invalid_pool_id": "The pool ID does not look valid.",
+      "invalid_time_zone": "Select a valid IANA time zone."
     },
     "abort": {
       "already_configured": "This PoolMath pool is already configured.",
@@ -40,14 +57,17 @@
   "options": {
     "step": {
       "init": {
-        "title": "Synchronization options",
+        "title": "Automatic synchronization schedule",
+        "description": "Choose the time and time zone used for the once-daily PoolMath submission.",
         "data": {
           "auto_submit": "Enable automatic daily submission",
           "submit_time": "Daily submission time",
-          "max_reading_age_hours": "Maximum reading age in hours"
+          "time_zone": "Time zone",
+          "max_reading_age_hours": "Maximum selected-reading age in hours"
         },
         "data_description": {
-          "submit_time": "Uses Home Assistant's local time zone.",
+          "submit_time": "The selected time is interpreted in the chosen time zone.",
+          "time_zone": "Uses an IANA zone such as America/Chicago and follows daylight-saving changes.",
           "max_reading_age_hours": "Submission is blocked when any selected sensor is older than this limit."
         }
       }

@@ -27,5 +27,6 @@ async def async_get_config_entry_diagnostics(
             "last_error": entry.runtime_data.manager.state.last_error,
             "last_log_id": entry.runtime_data.manager.state.last_log_id,
             "last_values": entry.runtime_data.manager.state.last_values,
+            "last_unmapped_values": entry.runtime_data.manager.state.last_unmapped_values,
         },
     }

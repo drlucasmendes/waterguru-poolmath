@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Any
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError, available_timezones
 
 import voluptuous as vol
 
@@ -13,10 +14,22 @@ from homeassistant.helpers import selector
 
 from .const import (
     CONF_AUTHORIZATION,
+    CONF_BOR_ENTITY,
+    CONF_CC_ENTITY,
+    CONF_CH_ENTITY,
+    CONF_COPPER_ENTITY,
+    CONF_CSI_ENTITY,
+    CONF_CYA_ENTITY,
     CONF_FC_ENTITY,
+    CONF_IRON_ENTITY,
     CONF_PH_ENTITY,
+    CONF_PHOSPHATE_ENTITY,
     CONF_POOL_ID,
+    CONF_SALT_ENTITY,
+    CONF_TA_ENTITY,
+    CONF_TDS_ENTITY,
     CONF_TEMPERATURE_ENTITY,
+    CONF_TOTAL_HARDNESS_ENTITY,
     DEFAULT_AUTO_SUBMIT,
     DEFAULT_MAX_READING_AGE_HOURS,
     DEFAULT_SUBMIT_TIME,
@@ -24,13 +37,12 @@ from .const import (
     OPT_AUTO_SUBMIT,
     OPT_MAX_READING_AGE_HOURS,
     OPT_SUBMIT_TIME,
+    OPT_TIME_ZONE,
 )
 
 
 def _entity_selector() -> selector.EntitySelector:
-    return selector.EntitySelector(
-        selector.EntitySelectorConfig(domain="sensor")
-    )
+    return selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor"))
 
 
 class WaterGuruPoolMathConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -63,6 +75,7 @@ class WaterGuruPoolMathConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     options={
                         OPT_AUTO_SUBMIT: DEFAULT_AUTO_SUBMIT,
                         OPT_SUBMIT_TIME: DEFAULT_SUBMIT_TIME,
+                        OPT_TIME_ZONE: self.hass.config.time_zone,
                         OPT_MAX_READING_AGE_HOURS: DEFAULT_MAX_READING_AGE_HOURS,
                     },
                 )
@@ -76,6 +89,18 @@ class WaterGuruPoolMathConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Required(CONF_FC_ENTITY): _entity_selector(),
                 vol.Required(CONF_PH_ENTITY): _entity_selector(),
                 vol.Required(CONF_TEMPERATURE_ENTITY): _entity_selector(),
+                vol.Optional(CONF_CC_ENTITY): _entity_selector(),
+                vol.Optional(CONF_CYA_ENTITY): _entity_selector(),
+                vol.Optional(CONF_CH_ENTITY): _entity_selector(),
+                vol.Optional(CONF_TA_ENTITY): _entity_selector(),
+                vol.Optional(CONF_SALT_ENTITY): _entity_selector(),
+                vol.Optional(CONF_BOR_ENTITY): _entity_selector(),
+                vol.Optional(CONF_TDS_ENTITY): _entity_selector(),
+                vol.Optional(CONF_CSI_ENTITY): _entity_selector(),
+                vol.Optional(CONF_TOTAL_HARDNESS_ENTITY): _entity_selector(),
+                vol.Optional(CONF_PHOSPHATE_ENTITY): _entity_selector(),
+                vol.Optional(CONF_COPPER_ENTITY): _entity_selector(),
+                vol.Optional(CONF_IRON_ENTITY): _entity_selector(),
             }
         )
         return self.async_show_form(
@@ -138,10 +163,18 @@ class WaterGuruPoolMathOptionsFlow(config_entries.OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Manage options."""
+        errors: dict[str, str] = {}
         if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
+            try:
+                ZoneInfo(user_input[OPT_TIME_ZONE])
+            except ZoneInfoNotFoundError:
+                errors[OPT_TIME_ZONE] = "invalid_time_zone"
+            else:
+                return self.async_create_entry(title="", data=user_input)
 
         options = self.config_entry.options
+        default_zone = options.get(OPT_TIME_ZONE, self.hass.config.time_zone)
+        zone_options = sorted(available_timezones())
         schema = vol.Schema(
             {
                 vol.Required(
@@ -153,12 +186,26 @@ class WaterGuruPoolMathOptionsFlow(config_entries.OptionsFlow):
                     default=options.get(OPT_SUBMIT_TIME, DEFAULT_SUBMIT_TIME),
                 ): selector.TimeSelector(),
                 vol.Required(
+                    OPT_TIME_ZONE,
+                    default=default_zone,
+                ): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=zone_options,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                        sort=True,
+                    )
+                ),
+                vol.Required(
                     OPT_MAX_READING_AGE_HOURS,
                     default=options.get(
                         OPT_MAX_READING_AGE_HOURS,
                         DEFAULT_MAX_READING_AGE_HOURS,
                     ),
-                ): vol.All(vol.Coerce(int), vol.Range(min=1, max=168)),
+                ): vol.All(vol.Coerce(int), vol.Range(min=1, max=8760)),
             }
         )
-        return self.async_show_form(step_id="init", data_schema=schema)
+        return self.async_show_form(
+            step_id="init",
+            data_schema=schema,
+            errors=errors,
+        )

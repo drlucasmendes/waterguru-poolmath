@@ -37,6 +37,7 @@ async def async_setup_entry(
     entry.runtime_data = RuntimeData(manager=manager)
 
     await manager.async_initialize()
+    entry.async_on_unload(manager.async_shutdown)
     entry.async_on_unload(entry.add_update_listener(_async_reload_entry))
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
