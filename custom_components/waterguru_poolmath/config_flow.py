@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from typing import Any
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError, available_timezones
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import voluptuous as vol
 
@@ -554,11 +554,9 @@ class WaterGuruPoolMathConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Required(
                         OPT_TIME_ZONE,
                         default=self.hass.config.time_zone,
-                    ): selector.SelectSelector(
-                        selector.SelectSelectorConfig(
-                            options=sorted(available_timezones()),
-                            mode=selector.SelectSelectorMode.DROPDOWN,
-                            sort=True,
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT
                         )
                     ),
                     vol.Required(
@@ -689,11 +687,9 @@ class WaterGuruPoolMathOptionsFlow(config_entries.OptionsFlow):
                             OPT_TIME_ZONE,
                             self.hass.config.time_zone,
                         ),
-                    ): selector.SelectSelector(
-                        selector.SelectSelectorConfig(
-                            options=sorted(available_timezones()),
-                            mode=selector.SelectSelectorMode.DROPDOWN,
-                            sort=True,
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT
                         )
                     ),
                     vol.Required(

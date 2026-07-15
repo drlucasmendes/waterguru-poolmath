@@ -1,6 +1,18 @@
 # WaterGuru to PoolMath
 
 
+## Fixes in v1.2.2
+
+- **Force resync last WaterGuru test** now refreshes the authoritative
+  WaterGuru measurement timestamp before uploading. This prevents a timestamp
+  persisted by an older integration version from being reused after an upgrade.
+- The force-resynced PoolMath entry therefore uses the time WaterGuru performed
+  the test, not the time the button was pressed.
+- Time-zone entry no longer enumerates the complete system zone database inside
+  Home Assistant's event loop, eliminating the blocking-call warnings. Enter an
+  IANA zone such as `America/Chicago`.
+
+
 ## Fine-tuning in v1.2.1
 
 - PoolMath receives the timestamp from WaterGuru's **Last Measurement** sensor,

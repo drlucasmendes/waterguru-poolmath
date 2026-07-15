@@ -405,7 +405,7 @@ class WaterGuruPoolMathManager:
         self.state.last_error = None
         self._notify()
 
-        if not self.state.last_values or not self.state.last_measurement_timestamp:
+        if not self.state.last_values:
             self.state.status = STATUS_INVALID
             self.state.last_error = (
                 "No previous successful WaterGuru test is available to resubmit"
@@ -414,10 +414,17 @@ class WaterGuruPoolMathManager:
             return False
 
         try:
+            # Always refresh the authoritative WaterGuru test timestamp before
+            # resubmitting. This prevents an older persisted timestamp from a
+            # previous integration version being reused after an upgrade.
+            measurement_time = self._read_measurement_timestamp()
+            log_timestamp = measurement_time.strftime("%Y-%m-%dT%H:%M:%SZ")
+
             result = await self.client.async_submit_testlog(
                 values=dict(self.state.last_values),
-                log_timestamp=self.state.last_measurement_timestamp,
+                log_timestamp=log_timestamp,
             )
+            self.state.last_measurement_timestamp = log_timestamp
             self.state.status = STATUS_SUCCESS
             self.state.last_submission = dt_util.utcnow().isoformat()
             self.state.last_http_status = result.status

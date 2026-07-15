@@ -50,7 +50,7 @@
         },
         "data_description": {
           "submit_time": "The time is interpreted in the selected time zone.",
-          "time_zone": "Use an IANA zone such as America/Chicago.",
+          "time_zone": "Enter an IANA time zone, such as America/Chicago. The value is validated before setup completes.",
           "max_reading_age_hours": "The sync is blocked if any selected sensor is older than this limit."
         }
       },
@@ -113,7 +113,7 @@
         },
         "data_description": {
           "submit_time": "The selected time is interpreted in the chosen time zone.",
-          "time_zone": "Uses an IANA zone such as America/Chicago and follows daylight-saving changes.",
+          "time_zone": "Enter an IANA time zone, such as America/Chicago. The value follows daylight-saving changes.",
           "max_reading_age_hours": "Submission is blocked when any selected sensor is older than this limit."
         }
       }
@@ -125,7 +125,7 @@
         "name": "Submit current values"
       },
       "resubmit_last_test": {
-        "name": "Force resync last test"
+        "name": "Force resync last WaterGuru test"
       }
     },
     "sensor": {

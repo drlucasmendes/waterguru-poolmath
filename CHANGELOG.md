@@ -1,6 +1,19 @@
 # Changelog
 
 
+## 1.2.2
+
+- Fix forced resynchronization using a stale timestamp persisted by an older
+  integration version.
+- Refresh the WaterGuru last-measurement timestamp immediately before force
+  resynchronization and use it as PoolMath `logTimestamp`.
+- Rename the control to **Force resync last WaterGuru test**.
+- Remove blocking `available_timezones()` filesystem calls from the Home
+  Assistant event loop.
+- Keep IANA time-zone validation while accepting the zone as a text field.
+
+
+
 ## 1.2.1
 
 - Use WaterGuru's actual **Last Measurement** timestamp as the PoolMath
