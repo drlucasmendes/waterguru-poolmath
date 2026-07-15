@@ -1,6 +1,21 @@
 # Changelog
 
 
+## 1.2.0
+
+- Fix the config-flow regression that caused
+  `async_step_waterguru_tests` to be missing.
+- Rebuild the complete multi-step setup wizard with correctly scoped methods.
+- Add the daily time, time zone, automatic-sync toggle, and reading-age limit
+  directly to initial setup.
+- Keep the standard WaterGuru test values on the main test screen and move
+  less common values to a separate advanced screen.
+- Preserve the **Submit current values** and **Force resync last test** buttons.
+- Preserve persisted last-test data, original measurement timestamp, duplicate
+  signature, HTTP status, and PoolMath log ID across Home Assistant restarts.
+
+
+
 ## 1.1.1
 
 - Add a **Force resync last test** button that resubmits the persisted last

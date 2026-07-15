@@ -77,6 +77,21 @@
           "copper_entity": "Diagnostics only; PoolMath has no matching test-log field.",
           "iron_entity": "Diagnostics only; PoolMath has no matching test-log field."
         }
+      },
+      "schedule": {
+        "title": "Daily synchronization schedule",
+        "description": "Choose when the WaterGuru test should be sent to PoolMath. The selected time follows the chosen time zone and daylight-saving changes.",
+        "data": {
+          "auto_submit": "Enable automatic daily submission",
+          "submit_time": "Daily submission time",
+          "time_zone": "Time zone",
+          "max_reading_age_hours": "Maximum selected-reading age in hours"
+        },
+        "data_description": {
+          "submit_time": "The time is interpreted in the selected time zone.",
+          "time_zone": "Use an IANA zone such as America/Chicago.",
+          "max_reading_age_hours": "The sync is blocked if any selected sensor is older than this limit."
+        }
       }
     },
     "error": {

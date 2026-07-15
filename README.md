@@ -1,5 +1,16 @@
 # WaterGuru to PoolMath
 
+
+## New in v1.2.0
+
+- Fixed the setup wizard crash after pool selection.
+- Added schedule time and time zone during initial setup.
+- Kept standard WaterGuru test values on the first sensor screen.
+- Moved less common optional values into an advanced screen.
+- Added separate buttons for submitting current values and resyncing the exact
+  last captured test.
+- Runtime state and duplicate protection survive Home Assistant restarts.
+
 Sync WaterGuru measurements from Home Assistant to PoolMath once per day.
 
 > PoolMath does not publish this write API. This integration uses the mobile-app
