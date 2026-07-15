@@ -1,0 +1,74 @@
+{
+  "title": "WaterGuru to PoolMath",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect WaterGuru sensors to PoolMath",
+        "description": "This uses PoolMath's unofficial mobile-app endpoint. Enter the complete Authorization header beginning with `Basic `.",
+        "data": {
+          "authorization": "PoolMath authorization header",
+          "pool_id": "PoolMath pool ID",
+          "fc_entity": "WaterGuru free chlorine sensor",
+          "ph_entity": "WaterGuru pH sensor",
+          "temperature_entity": "WaterGuru water temperature sensor"
+        },
+        "data_description": {
+          "authorization": "Complete value, including the word Basic and the encoded credential.",
+          "pool_id": "UUID of the destination pool.",
+          "fc_entity": "Sensor whose numeric state is free chlorine in ppm.",
+          "ph_entity": "Sensor whose numeric state is pH.",
+          "temperature_entity": "Sensor whose state is the current water temperature."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Update PoolMath authorization",
+        "description": "Enter a fresh complete Basic authorization header.",
+        "data": {
+          "authorization": "PoolMath authorization header"
+        }
+      }
+    },
+    "error": {
+      "authorization_format": "The value must begin with Basic followed by the encoded credential.",
+      "invalid_pool_id": "The pool ID does not look valid."
+    },
+    "abort": {
+      "already_configured": "This PoolMath pool is already configured.",
+      "reauth_successful": "Authorization updated successfully."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Synchronization options",
+        "data": {
+          "auto_submit": "Enable automatic daily submission",
+          "submit_time": "Daily submission time",
+          "max_reading_age_hours": "Maximum reading age in hours"
+        },
+        "data_description": {
+          "submit_time": "Uses Home Assistant's local time zone.",
+          "max_reading_age_hours": "Submission is blocked when any selected sensor is older than this limit."
+        }
+      }
+    }
+  },
+  "entity": {
+    "button": {
+      "submit_now": {
+        "name": "Submit now"
+      }
+    },
+    "sensor": {
+      "status": {
+        "name": "Status"
+      },
+      "last_submission": {
+        "name": "Last submission"
+      },
+      "last_http_status": {
+        "name": "Last HTTP status"
+      }
+    }
+  }
+}

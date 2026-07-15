@@ -1,0 +1,13 @@
+{
+  "domain": "waterguru_poolmath",
+  "name": "WaterGuru to PoolMath",
+  "version": "0.1.0",
+  "documentation": "https://github.com/drlucasmendes/waterguru-poolmath",
+  "issue_tracker": "https://github.com/drlucasmendes/waterguru-poolmath/issues",
+  "config_flow": true,
+  "iot_class": "cloud_push",
+  "requirements": [],
+  "codeowners": [
+    "@drlucasmendes"
+  ]
+}
