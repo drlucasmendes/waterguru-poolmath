@@ -1,6 +1,19 @@
 # WaterGuru to PoolMath
 
 
+## Fine-tuning in v1.2.1
+
+- PoolMath receives the timestamp from WaterGuru's **Last Measurement** sensor,
+  so the log reflects when WaterGuru performed the test rather than when Home
+  Assistant uploaded it.
+- The login field accepts either a Trouble Free Pool username or email address.
+- WaterGuru entities are detected automatically from the installed WaterGuru
+  integration and presented preselected on one confirmation screen.
+- Automatic detection is matched to the selected PoolMath pool name when
+  multiple WaterGuru devices exist.
+- Every detected entity remains editable before setup is completed.
+
+
 ## New in v1.2.0
 
 - Fixed the setup wizard crash after pool selection.

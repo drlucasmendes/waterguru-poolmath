@@ -25,6 +25,7 @@ from .const import (
     ATTR_LAST_UNMAPPED_VALUES,
     ATTR_LAST_VALUES,
     CONF_FC_ENTITY,
+    CONF_MEASUREMENT_TIME_ENTITY,
     CONF_PH_ENTITY,
     CONF_TEMPERATURE_ENTITY,
     DEFAULT_AUTO_SUBMIT,
@@ -214,6 +215,34 @@ class WaterGuruPoolMathManager:
 
         return value, state.last_updated, state.attributes.get("unit_of_measurement")
 
+
+    def _read_measurement_timestamp(self) -> datetime:
+        """Read the actual WaterGuru test timestamp."""
+        entity_id = self.entry.data.get(CONF_MEASUREMENT_TIME_ENTITY)
+        if not entity_id:
+            raise ValueError(
+                "WaterGuru last-measurement timestamp entity is not configured"
+            )
+
+        state = self.hass.states.get(entity_id)
+        if state is None:
+            raise ValueError(
+                f"WaterGuru measurement-time entity {entity_id} does not exist"
+            )
+        if state.state in (STATE_UNKNOWN, STATE_UNAVAILABLE, "", None):
+            raise ValueError(
+                f"WaterGuru measurement-time entity {entity_id} is {state.state}"
+            )
+
+        parsed = dt_util.parse_datetime(state.state)
+        if parsed is None:
+            raise ValueError(
+                f"WaterGuru measurement-time entity {entity_id} is not a valid timestamp"
+            )
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=dt_util.UTC)
+        return parsed.astimezone(dt_util.UTC)
+
     def _read_optional_entities(
         self,
         mapping: dict[str, str],
@@ -262,13 +291,13 @@ class WaterGuruPoolMathManager:
         self._notify()
 
         try:
-            fc, fc_updated, _ = self._read_number(
+            fc, _, _ = self._read_number(
                 self.entry.data[CONF_FC_ENTITY], "Free chlorine"
             )
-            ph, ph_updated, _ = self._read_number(
+            ph, _, _ = self._read_number(
                 self.entry.data[CONF_PH_ENTITY], "pH"
             )
-            temp, temp_updated, temp_unit = self._read_number(
+            temp, _, temp_unit = self._read_number(
                 self.entry.data[CONF_TEMPERATURE_ENTITY], "Water temperature"
             )
 
@@ -281,10 +310,10 @@ class WaterGuruPoolMathManager:
             elif temp_unit not in (None, UnitOfTemperature.FAHRENHEIT):
                 raise ValueError(f"Unsupported water-temperature unit: {temp_unit}")
 
-            optional_values, optional_timestamps = self._read_optional_entities(
+            optional_values, _ = self._read_optional_entities(
                 POOLMATH_OPTIONAL_ENTITY_FIELDS
             )
-            unmapped_values, unmapped_timestamps = self._read_optional_entities(
+            unmapped_values, _ = self._read_optional_entities(
                 UNMAPPED_WATERGURU_ENTITY_FIELDS
             )
 
@@ -296,36 +325,28 @@ class WaterGuruPoolMathManager:
             }
             self._validate_ranges(values)
 
-            timestamps = [
-                stamp
-                for stamp in (
-                    fc_updated,
-                    ph_updated,
-                    temp_updated,
-                    *optional_timestamps,
-                    *unmapped_timestamps,
-                )
-                if stamp
-            ]
-            newest = max(timestamps) if timestamps else dt_util.utcnow()
-            oldest = min(timestamps) if timestamps else newest
+            measurement_time = self._read_measurement_timestamp()
             max_age_hours = self.entry.options.get(
                 OPT_MAX_READING_AGE_HOURS, DEFAULT_MAX_READING_AGE_HOURS
             )
-            age_hours = (dt_util.utcnow() - oldest).total_seconds() / 3600
+            age_hours = (
+                dt_util.utcnow() - measurement_time
+            ).total_seconds() / 3600
             if age_hours > max_age_hours:
                 raise ValueError(
-                    f"At least one selected WaterGuru reading is {age_hours:.1f} hours old "
+                    f"The WaterGuru test is {age_hours:.1f} hours old "
                     f"(limit: {max_age_hours} hours)"
+                )
+            if age_hours < -0.25:
+                raise ValueError(
+                    "The WaterGuru test timestamp is unexpectedly in the future"
                 )
 
             signature_values = {**values, **unmapped_values}
             signature_body = "|".join(
                 f"{key}={signature_values[key]}" for key in sorted(signature_values)
             )
-            signature = (
-                f"{newest.astimezone(dt_util.UTC).isoformat()}|{signature_body}"
-            )
+            signature = f"{measurement_time.isoformat()}|{signature_body}"
 
             if not force and signature == self.state.last_signature:
                 self.state.status = STATUS_DUPLICATE
@@ -335,7 +356,7 @@ class WaterGuruPoolMathManager:
 
             result = await self.client.async_submit_testlog(
                 values=values,
-                log_timestamp=newest.astimezone(dt_util.UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                log_timestamp=measurement_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
             )
 
             self.state.status = STATUS_SUCCESS
@@ -343,9 +364,9 @@ class WaterGuruPoolMathManager:
             self.state.last_http_status = result.status
             self.state.last_log_id = result.log_id
             self.state.last_signature = signature
-            self.state.last_measurement_timestamp = newest.astimezone(
-                dt_util.UTC
-            ).strftime("%Y-%m-%dT%H:%M:%SZ")
+            self.state.last_measurement_timestamp = measurement_time.strftime(
+                "%Y-%m-%dT%H:%M:%SZ"
+            )
             self.state.last_values = values
             self.state.last_unmapped_values = unmapped_values
             self.state.last_error = None

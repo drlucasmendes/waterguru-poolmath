@@ -11,9 +11,9 @@
       },
       "login": {
         "title": "Sign in to PoolMath",
-        "description": "Your password is used only to obtain a PoolMath authorization token and is not saved.",
+        "description": "Enter either your Trouble Free Pool username or the email address associated with PoolMath. Your password is used only to obtain an authorization token and is not saved.",
         "data": {
-          "email": "PoolMath email",
+          "email": "Username or email",
           "password": "PoolMath password"
         }
       },
@@ -33,49 +33,10 @@
       },
       "reauth_login": {
         "title": "Reconnect PoolMath",
-        "description": "Enter your PoolMath credentials to generate a fresh authorization token. Your password is not saved.",
+        "description": "Enter your PoolMath username/email and password to generate a fresh authorization token. Your password is not saved.",
         "data": {
-          "email": "PoolMath email",
+          "email": "Username or email",
           "password": "PoolMath password"
-        }
-      },
-      "waterguru_tests": {
-        "title": "WaterGuru test results",
-        "description": "Select the five standard WaterGuru chemistry test values first. Free chlorine and pH are required. Total alkalinity, calcium hardness, and CYA may be left blank when you do not want older manual tests sent. Water temperature is also required.",
-        "data": {
-          "fc_entity": "Free chlorine",
-          "ph_entity": "pH",
-          "ta_entity": "Total alkalinity",
-          "ch_entity": "Calcium hardness",
-          "cya_entity": "CYA",
-          "temperature_entity": "Water temperature"
-        },
-        "data_description": {
-          "ta_entity": "Optional. Leave blank to avoid re-logging an older manual result.",
-          "ch_entity": "Optional. Leave blank to avoid re-logging an older manual result.",
-          "cya_entity": "Optional. Leave blank to avoid re-logging an older manual result.",
-          "temperature_entity": "Celsius is converted to Fahrenheit automatically."
-        }
-      },
-      "advanced_sensors": {
-        "title": "Advanced optional values",
-        "description": "These values are optional. PoolMath-supported values are uploaded when selected. Values without a PoolMath field are retained only in diagnostics.",
-        "data": {
-          "cc_entity": "Combined chlorine",
-          "salt_entity": "Salt",
-          "bor_entity": "Borates",
-          "tds_entity": "TDS",
-          "csi_entity": "CSI",
-          "total_hardness_entity": "Total hardness",
-          "phosphate_entity": "Phosphate",
-          "copper_entity": "Copper",
-          "iron_entity": "Iron"
-        },
-        "data_description": {
-          "total_hardness_entity": "Diagnostics only; PoolMath has no matching test-log field.",
-          "phosphate_entity": "Diagnostics only; PoolMath has no matching test-log field.",
-          "copper_entity": "Diagnostics only; PoolMath has no matching test-log field.",
-          "iron_entity": "Diagnostics only; PoolMath has no matching test-log field."
         }
       },
       "schedule": {
@@ -91,6 +52,38 @@
           "submit_time": "The time is interpreted in the selected time zone.",
           "time_zone": "Use an IANA zone such as America/Chicago.",
           "max_reading_age_hours": "The sync is blocked if any selected sensor is older than this limit."
+        }
+      },
+      "confirm_sensors": {
+        "title": "Confirm WaterGuru entities",
+        "description": "Home Assistant detected {detected_count} WaterGuru entities. Review the selections and press Submit. The last-measurement timestamp is used as the PoolMath test time, not the time Home Assistant performs the synchronization.",
+        "data": {
+          "measurement_time_entity": "WaterGuru last measurement time",
+          "fc_entity": "Free chlorine",
+          "ph_entity": "pH",
+          "ta_entity": "Total alkalinity",
+          "ch_entity": "Calcium hardness",
+          "cya_entity": "CYA",
+          "temperature_entity": "Water temperature",
+          "cc_entity": "Combined chlorine",
+          "salt_entity": "Salt",
+          "bor_entity": "Borates",
+          "tds_entity": "TDS",
+          "csi_entity": "CSI",
+          "total_hardness_entity": "Total hardness",
+          "phosphate_entity": "Phosphate",
+          "copper_entity": "Copper",
+          "iron_entity": "Iron"
+        },
+        "data_description": {
+          "measurement_time_entity": "Required. This timestamp becomes logTimestamp in PoolMath.",
+          "ta_entity": "Optional; confirm only when you want this value re-logged.",
+          "ch_entity": "Optional; confirm only when you want this value re-logged.",
+          "cya_entity": "Optional; confirm only when you want this value re-logged.",
+          "total_hardness_entity": "Diagnostics only; PoolMath has no matching field.",
+          "phosphate_entity": "Diagnostics only; PoolMath has no matching field.",
+          "copper_entity": "Diagnostics only; PoolMath has no matching field.",
+          "iron_entity": "Diagnostics only; PoolMath has no matching field."
         }
       }
     },

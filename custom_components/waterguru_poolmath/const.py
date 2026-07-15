@@ -20,6 +20,7 @@ AUTH_METHOD_BASIC = "basic"
 CONF_FC_ENTITY = "fc_entity"
 CONF_PH_ENTITY = "ph_entity"
 CONF_TEMPERATURE_ENTITY = "temperature_entity"
+CONF_MEASUREMENT_TIME_ENTITY = "measurement_time_entity"
 
 # Optional values that PoolMath's test-log endpoint supports.
 CONF_CC_ENTITY = "cc_entity"

@@ -73,6 +73,6 @@ async def async_migrate_entry(
             entry,
             data=new_data,
             version=2,
-            minor_version=0,
+            minor_version=2,
         )
     return True

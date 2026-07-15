@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
 from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError, available_timezones
 
@@ -10,6 +11,8 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigFlowResult
 from homeassistant.core import callback
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
@@ -34,6 +37,7 @@ from .const import (
     CONF_EMAIL,
     CONF_FC_ENTITY,
     CONF_IRON_ENTITY,
+    CONF_MEASUREMENT_TIME_ENTITY,
     CONF_PASSWORD,
     CONF_PH_ENTITY,
     CONF_PHOSPHATE_ENTITY,
@@ -67,7 +71,7 @@ class WaterGuruPoolMathConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle WaterGuru to PoolMath setup."""
 
     VERSION = 2
-    MINOR_VERSION = 1
+    MINOR_VERSION = 2
 
     def __init__(self) -> None:
         self._setup_data: dict[str, Any] = {}
@@ -75,6 +79,7 @@ class WaterGuruPoolMathConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._pools: list[PoolMathPool] = []
         self._default_pool_id: str | None = None
         self._reauth_entry: config_entries.ConfigEntry | None = None
+        self._detected_entities: dict[str, str] = {}
 
     async def async_step_user(
         self,
@@ -98,7 +103,7 @@ class WaterGuruPoolMathConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             options=[
                                 {
                                     "value": AUTH_METHOD_LOGIN,
-                                    "label": "PoolMath email and password (recommended)",
+                                    "label": "PoolMath username/email and password (recommended)",
                                 },
                                 {
                                     "value": AUTH_METHOD_BASIC,
@@ -116,7 +121,7 @@ class WaterGuruPoolMathConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self,
         user_input: dict[str, Any] | None = None,
     ) -> ConfigFlowResult:
-        """Authenticate with PoolMath email and password."""
+        """Authenticate with PoolMath username/email and password."""
         errors: dict[str, str] = {}
 
         if user_input is not None:
@@ -149,7 +154,7 @@ class WaterGuruPoolMathConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 {
                     vol.Required(CONF_EMAIL): selector.TextSelector(
                         selector.TextSelectorConfig(
-                            type=selector.TextSelectorType.EMAIL
+                            type=selector.TextSelectorType.TEXT
                         )
                     ),
                     vol.Required(CONF_PASSWORD): selector.TextSelector(
@@ -223,7 +228,10 @@ class WaterGuruPoolMathConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             )
             await self.async_set_unique_id(selected.pool_id)
             self._abort_if_unique_id_configured()
-            return await self.async_step_waterguru_tests()
+            self._detected_entities = self._detect_waterguru_entities(
+                selected.name
+            )
+            return await self.async_step_confirm_sensors()
 
         options = {
             pool.pool_id: pool.display_name
@@ -243,53 +251,268 @@ class WaterGuruPoolMathConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             ),
         )
 
-    async def async_step_waterguru_tests(
-        self,
-        user_input: dict[str, Any] | None = None,
-    ) -> ConfigFlowResult:
-        """Select standard WaterGuru test results."""
-        if user_input is not None:
-            self._setup_data.update(user_input)
-            return await self.async_step_advanced_sensors()
+    def _detect_waterguru_entities(self, pool_name: str) -> dict[str, str]:
+        """Detect and map entities supplied by the WaterGuru integration."""
+        entity_registry = er.async_get(self.hass)
+        device_registry = dr.async_get(self.hass)
 
-        return self.async_show_form(
-            step_id="waterguru_tests",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(CONF_FC_ENTITY): _entity_selector(),
-                    vol.Required(CONF_PH_ENTITY): _entity_selector(),
-                    vol.Optional(CONF_TA_ENTITY): _entity_selector(),
-                    vol.Optional(CONF_CH_ENTITY): _entity_selector(),
-                    vol.Optional(CONF_CYA_ENTITY): _entity_selector(),
-                    vol.Required(CONF_TEMPERATURE_ENTITY): _entity_selector(),
-                }
+        by_device: dict[str | None, list[er.RegistryEntry]] = defaultdict(list)
+        for entry in entity_registry.entities.values():
+            if entry.platform != "waterguru" or entry.domain != "sensor":
+                continue
+            if entry.disabled:
+                continue
+            by_device[entry.device_id].append(entry)
+
+        if not by_device:
+            return {}
+
+        pool_words = {
+            word for word in pool_name.lower().replace("_", " ").split() if word
+        }
+
+        def device_score(item: tuple[str | None, list[er.RegistryEntry]]) -> int:
+            device_id, entries = item
+            text_parts = [entry.entity_id for entry in entries]
+            if device_id:
+                device = device_registry.async_get(device_id)
+                if device:
+                    text_parts.extend(
+                        value
+                        for value in (
+                            device.name,
+                            device.name_by_user,
+                            device.model,
+                            device.manufacturer,
+                        )
+                        if value
+                    )
+            text = " ".join(text_parts).lower()
+            score = sum(20 for word in pool_words if word in text)
+            score += len(entries)
+            return score
+
+        _, entries = max(by_device.items(), key=device_score)
+
+        def searchable_text(entry: er.RegistryEntry) -> str:
+            state = self.hass.states.get(entry.entity_id)
+            values = [
+                entry.entity_id,
+                entry.original_name or "",
+                entry.translation_key or "",
+                entry.unique_id or "",
+                state.name if state else "",
+            ]
+            return " ".join(values).lower().replace("_", " ").replace("-", " ")
+
+        aliases: dict[str, tuple[str, ...]] = {
+            CONF_MEASUREMENT_TIME_ENTITY: (
+                "last measurement",
+                "latest measure time",
+                "measurement time",
             ),
-        )
+            CONF_FC_ENTITY: (
+                "free chlorine",
+                "freechlorine",
+                " fc ",
+                "fc ppm",
+            ),
+            CONF_PH_ENTITY: (
+                " ph ",
+                "pool ph",
+            ),
+            CONF_TA_ENTITY: (
+                "total alkalinity",
+                "alkalinity",
+            ),
+            CONF_CH_ENTITY: (
+                "calcium hardness",
+            ),
+            CONF_CYA_ENTITY: (
+                "cyanuric acid",
+                "stabilizer",
+                " cya ",
+            ),
+            CONF_TEMPERATURE_ENTITY: (
+                "water temperature",
+                "water temp",
+            ),
+            CONF_CC_ENTITY: (
+                "combined chlorine",
+            ),
+            CONF_SALT_ENTITY: (
+                "salt",
+            ),
+            CONF_BOR_ENTITY: (
+                "borate",
+                "borates",
+            ),
+            CONF_TDS_ENTITY: (
+                "total dissolved solids",
+                " tds ",
+            ),
+            CONF_CSI_ENTITY: (
+                "calcite saturation index",
+                " csi ",
+            ),
+            CONF_TOTAL_HARDNESS_ENTITY: (
+                "total hardness",
+            ),
+            CONF_PHOSPHATE_ENTITY: (
+                "phosphate",
+                "phosphates",
+            ),
+            CONF_COPPER_ENTITY: (
+                "copper",
+            ),
+            CONF_IRON_ENTITY: (
+                "iron",
+            ),
+        }
 
-    async def async_step_advanced_sensors(
+        detected: dict[str, str] = {}
+        for config_key, patterns in aliases.items():
+            candidates: list[tuple[int, er.RegistryEntry]] = []
+            for entry in entries:
+                text = f" {searchable_text(entry)} "
+                match_score = 0
+                for pattern in patterns:
+                    normalized = pattern.lower()
+                    if normalized in text:
+                        match_score = max(match_score, len(normalized))
+                if match_score:
+                    candidates.append((match_score, entry))
+            if candidates:
+                detected[config_key] = max(
+                    candidates,
+                    key=lambda item: item[0],
+                )[1].entity_id
+
+        return detected
+
+    @staticmethod
+    def _field(
+        key: str,
+        detected: dict[str, str],
+        *,
+        required: bool,
+    ) -> vol.Marker:
+        """Build a required or optional schema marker with a detected default."""
+        default = detected.get(key)
+        if required:
+            if default:
+                return vol.Required(key, default=default)
+            return vol.Required(key)
+        if default:
+            return vol.Optional(key, default=default)
+        return vol.Optional(key)
+
+    async def async_step_confirm_sensors(
         self,
         user_input: dict[str, Any] | None = None,
     ) -> ConfigFlowResult:
-        """Select advanced optional values."""
+        """Confirm automatically detected WaterGuru entities."""
         if user_input is not None:
-            self._setup_data.update(user_input)
+            self._setup_data.update(
+                {
+                    key: value
+                    for key, value in user_input.items()
+                    if value
+                }
+            )
             return await self.async_step_schedule()
 
+        detected = self._detected_entities
+        schema = vol.Schema(
+            {
+                self._field(
+                    CONF_MEASUREMENT_TIME_ENTITY,
+                    detected,
+                    required=True,
+                ): _entity_selector(),
+                self._field(
+                    CONF_FC_ENTITY,
+                    detected,
+                    required=True,
+                ): _entity_selector(),
+                self._field(
+                    CONF_PH_ENTITY,
+                    detected,
+                    required=True,
+                ): _entity_selector(),
+                self._field(
+                    CONF_TA_ENTITY,
+                    detected,
+                    required=False,
+                ): _entity_selector(),
+                self._field(
+                    CONF_CH_ENTITY,
+                    detected,
+                    required=False,
+                ): _entity_selector(),
+                self._field(
+                    CONF_CYA_ENTITY,
+                    detected,
+                    required=False,
+                ): _entity_selector(),
+                self._field(
+                    CONF_TEMPERATURE_ENTITY,
+                    detected,
+                    required=True,
+                ): _entity_selector(),
+                self._field(
+                    CONF_CC_ENTITY,
+                    detected,
+                    required=False,
+                ): _entity_selector(),
+                self._field(
+                    CONF_SALT_ENTITY,
+                    detected,
+                    required=False,
+                ): _entity_selector(),
+                self._field(
+                    CONF_BOR_ENTITY,
+                    detected,
+                    required=False,
+                ): _entity_selector(),
+                self._field(
+                    CONF_TDS_ENTITY,
+                    detected,
+                    required=False,
+                ): _entity_selector(),
+                self._field(
+                    CONF_CSI_ENTITY,
+                    detected,
+                    required=False,
+                ): _entity_selector(),
+                self._field(
+                    CONF_TOTAL_HARDNESS_ENTITY,
+                    detected,
+                    required=False,
+                ): _entity_selector(),
+                self._field(
+                    CONF_PHOSPHATE_ENTITY,
+                    detected,
+                    required=False,
+                ): _entity_selector(),
+                self._field(
+                    CONF_COPPER_ENTITY,
+                    detected,
+                    required=False,
+                ): _entity_selector(),
+                self._field(
+                    CONF_IRON_ENTITY,
+                    detected,
+                    required=False,
+                ): _entity_selector(),
+            }
+        )
         return self.async_show_form(
-            step_id="advanced_sensors",
-            data_schema=vol.Schema(
-                {
-                    vol.Optional(CONF_CC_ENTITY): _entity_selector(),
-                    vol.Optional(CONF_SALT_ENTITY): _entity_selector(),
-                    vol.Optional(CONF_BOR_ENTITY): _entity_selector(),
-                    vol.Optional(CONF_TDS_ENTITY): _entity_selector(),
-                    vol.Optional(CONF_CSI_ENTITY): _entity_selector(),
-                    vol.Optional(CONF_TOTAL_HARDNESS_ENTITY): _entity_selector(),
-                    vol.Optional(CONF_PHOSPHATE_ENTITY): _entity_selector(),
-                    vol.Optional(CONF_COPPER_ENTITY): _entity_selector(),
-                    vol.Optional(CONF_IRON_ENTITY): _entity_selector(),
-                }
-            ),
+            step_id="confirm_sensors",
+            data_schema=schema,
+            description_placeholders={
+                "detected_count": str(len(detected)),
+            },
         )
 
     async def async_step_schedule(
@@ -364,7 +587,7 @@ class WaterGuruPoolMathConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self,
         user_input: dict[str, Any] | None = None,
     ) -> ConfigFlowResult:
-        """Reauthenticate using PoolMath email and password."""
+        """Reauthenticate using PoolMath username/email and password."""
         errors: dict[str, str] = {}
 
         if user_input is not None:
@@ -401,7 +624,7 @@ class WaterGuruPoolMathConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 {
                     vol.Required(CONF_EMAIL): selector.TextSelector(
                         selector.TextSelectorConfig(
-                            type=selector.TextSelectorType.EMAIL
+                            type=selector.TextSelectorType.TEXT
                         )
                     ),
                     vol.Required(CONF_PASSWORD): selector.TextSelector(

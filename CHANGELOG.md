@@ -1,6 +1,22 @@
 # Changelog
 
 
+## 1.2.1
+
+- Use WaterGuru's actual **Last Measurement** timestamp as the PoolMath
+  `logTimestamp`.
+- Validate reading age against the WaterGuru test timestamp instead of Home
+  Assistant entity update times.
+- Accept either a Trouble Free Pool username or email address on login and
+  reauthentication forms.
+- Automatically discover WaterGuru sensor entities through Home Assistant's
+  entity and device registries.
+- Match automatic detection to the selected PoolMath pool name when possible.
+- Present all detected values preselected on one confirmation screen while
+  retaining manual override capability.
+
+
+
 ## 1.2.0
 
 - Fix the config-flow regression that caused
