@@ -20,6 +20,7 @@ async def async_get_config_entry_diagnostics(
         "entry": async_redact_data(dict(entry.data), {CONF_AUTHORIZATION, CONF_EMAIL, CONF_PASSWORD}),
         "options": dict(entry.options),
         "measurement_time_entity": entry.data.get("measurement_time_entity"),
+        "resolved_measurement_time_entity": entry.runtime_data.manager._find_last_measurement_entity(),
         "runtime": {
             "status": entry.runtime_data.manager.state.status,
             "last_submission": entry.runtime_data.manager.state.last_submission,

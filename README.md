@@ -1,6 +1,20 @@
 # WaterGuru to PoolMath
 
 
+## Fixes in v1.2.3
+
+- Existing installations upgraded from v1.2.0 no longer fail when the new
+  measurement-time entity is absent from their saved config entry.
+- The integration now finds WaterGuru's **Last Measurement** sensor dynamically
+  from the same WaterGuru device as the free-chlorine entity.
+- If that sensor is unavailable, it falls back to WaterGuru's
+  `last_measurement` attribute on the free-chlorine or pH sensor.
+- Both **Submit current values** and **Force resync last WaterGuru test** use
+  the resolved WaterGuru test timestamp.
+- The integration deliberately does not fall back to the button-press time or
+  Home Assistant entity update time.
+
+
 ## Fixes in v1.2.2
 
 - **Force resync last WaterGuru test** now refreshes the authoritative

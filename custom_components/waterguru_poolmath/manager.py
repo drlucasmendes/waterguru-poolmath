@@ -12,6 +12,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN, UnitOfTemperature
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.event import async_track_point_in_utc_time
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
@@ -139,6 +140,7 @@ class WaterGuruPoolMathManager:
                 "last_log_id": self.state.last_log_id,
                 "last_signature": self.state.last_signature,
                 "last_measurement_timestamp": self.state.last_measurement_timestamp,
+            "resolved_measurement_time_entity": self._find_last_measurement_entity(),
                 "last_values": self.state.last_values,
                 "last_unmapped_values": self.state.last_unmapped_values,
             }
@@ -216,32 +218,118 @@ class WaterGuruPoolMathManager:
         return value, state.last_updated, state.attributes.get("unit_of_measurement")
 
 
-    def _read_measurement_timestamp(self) -> datetime:
-        """Read the actual WaterGuru test timestamp."""
-        entity_id = self.entry.data.get(CONF_MEASUREMENT_TIME_ENTITY)
-        if not entity_id:
-            raise ValueError(
-                "WaterGuru last-measurement timestamp entity is not configured"
-            )
 
-        state = self.hass.states.get(entity_id)
-        if state is None:
-            raise ValueError(
-                f"WaterGuru measurement-time entity {entity_id} does not exist"
-            )
-        if state.state in (STATE_UNKNOWN, STATE_UNAVAILABLE, "", None):
-            raise ValueError(
-                f"WaterGuru measurement-time entity {entity_id} is {state.state}"
-            )
-
-        parsed = dt_util.parse_datetime(state.state)
+    def _parse_measurement_timestamp(
+        self,
+        value: Any,
+        source: str,
+    ) -> datetime | None:
+        """Parse one candidate WaterGuru measurement timestamp."""
+        if value in (None, "", STATE_UNKNOWN, STATE_UNAVAILABLE):
+            return None
+        if isinstance(value, datetime):
+            parsed = value
+        else:
+            parsed = dt_util.parse_datetime(str(value))
         if parsed is None:
-            raise ValueError(
-                f"WaterGuru measurement-time entity {entity_id} is not a valid timestamp"
+            _LOGGER.debug(
+                "Could not parse WaterGuru measurement timestamp %r from %s",
+                value,
+                source,
             )
+            return None
         if parsed.tzinfo is None:
             parsed = parsed.replace(tzinfo=dt_util.UTC)
         return parsed.astimezone(dt_util.UTC)
+
+    def _find_last_measurement_entity(self) -> str | None:
+        """Find WaterGuru's Last Measurement sensor for the selected device."""
+        configured = self.entry.data.get(CONF_MEASUREMENT_TIME_ENTITY)
+        if configured and self.hass.states.get(configured) is not None:
+            return configured
+
+        entity_registry = er.async_get(self.hass)
+        fc_entity_id = self.entry.data.get(CONF_FC_ENTITY)
+        fc_entry = (
+            entity_registry.async_get(fc_entity_id)
+            if fc_entity_id
+            else None
+        )
+        target_device_id = fc_entry.device_id if fc_entry else None
+
+        candidates = []
+        for registry_entry in entity_registry.entities.values():
+            if registry_entry.domain != "sensor":
+                continue
+            if registry_entry.platform != "waterguru":
+                continue
+            if target_device_id and registry_entry.device_id != target_device_id:
+                continue
+
+            search_text = " ".join(
+                value
+                for value in (
+                    registry_entry.entity_id,
+                    registry_entry.original_name,
+                    registry_entry.translation_key,
+                    registry_entry.unique_id,
+                )
+                if value
+            ).lower().replace("_", " ").replace("-", " ")
+
+            if "last measurement" in search_text:
+                candidates.append(registry_entry.entity_id)
+
+        if candidates:
+            return sorted(candidates)[0]
+        return None
+
+    def _read_measurement_timestamp(self) -> datetime:
+        """Resolve the actual WaterGuru test timestamp.
+
+        Resolution order:
+        1. Explicitly configured Last Measurement sensor.
+        2. Automatically discovered Last Measurement sensor on the FC device.
+        3. WaterGuru's `last_measurement` attribute on FC or pH.
+        """
+        timestamp_entity = self._find_last_measurement_entity()
+        if timestamp_entity:
+            state = self.hass.states.get(timestamp_entity)
+            if state is not None:
+                parsed = self._parse_measurement_timestamp(
+                    state.state,
+                    timestamp_entity,
+                )
+                if parsed is not None:
+                    return parsed
+
+        attribute_names = (
+            "last_measurement",
+            "last measurement",
+            "measure_time",
+            "measureTime",
+            "latest_measure_time",
+            "latestMeasureTime",
+        )
+        for config_key in (CONF_FC_ENTITY, CONF_PH_ENTITY):
+            entity_id = self.entry.data.get(config_key)
+            if not entity_id:
+                continue
+            state = self.hass.states.get(entity_id)
+            if state is None:
+                continue
+            for attribute_name in attribute_names:
+                parsed = self._parse_measurement_timestamp(
+                    state.attributes.get(attribute_name),
+                    f"{entity_id}.{attribute_name}",
+                )
+                if parsed is not None:
+                    return parsed
+
+        raise ValueError(
+            "Could not determine the WaterGuru test time. Enable the WaterGuru "
+            "'Last Measurement' entity or reconfigure the integration."
+        )
 
     def _read_optional_entities(
         self,
@@ -461,6 +549,7 @@ class WaterGuruPoolMathManager:
             ATTR_LAST_UNMAPPED_VALUES: self.state.last_unmapped_values,
             ATTR_LAST_SIGNATURE: self.state.last_signature,
             "last_measurement_timestamp": self.state.last_measurement_timestamp,
+            "resolved_measurement_time_entity": self._find_last_measurement_entity(),
             "last_attempt": self.state.last_attempt,
             "last_http_status": self.state.last_http_status,
             "automatic_submission_enabled": self.entry.options.get(

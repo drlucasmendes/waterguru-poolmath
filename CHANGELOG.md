@@ -1,6 +1,18 @@
 # Changelog
 
 
+## 1.2.3
+
+- Fix current submission and forced resync failing on upgraded config entries
+  without `measurement_time_entity`.
+- Dynamically discover WaterGuru's Last Measurement sensor from the same device
+  as the selected free-chlorine sensor.
+- Fall back to the `last_measurement` attribute on WaterGuru FC or pH entities.
+- Never substitute sync time or entity update time for the actual test time.
+- Add the resolved timestamp entity to status diagnostics.
+
+
+
 ## 1.2.2
 
 - Fix forced resynchronization using a stale timestamp persisted by an older
