@@ -1,6 +1,22 @@
 # Changelog
 
 
+## 1.2.4
+
+- Add a prominent unofficial-project notice to the README.
+- Add a detailed responsible-use and third-party-service disclaimer.
+- Clarify that PoolMath does not provide a documented public write API for this
+  integration.
+- Document the integration's conservative request behavior and discourage
+  excessive requests or historical backfilling.
+- Expand liability, safety, privacy, and credential-handling guidance.
+- Add `SECURITY.md` with private vulnerability-reporting and credential-redaction
+  guidance.
+- Add `CONTRIBUTING.md` with issue, testing, and pull-request instructions.
+- Strengthen the GitHub bug-report template warning against sharing secrets.
+
+
+
 ## 1.2.3
 
 - Fix current submission and forced resync failing on upgraded config entries

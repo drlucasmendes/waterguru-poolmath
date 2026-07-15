@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Do not include your PoolMath Authorization header, cookies, or credentials.
+        Do not include your PoolMath password, Authorization header, cookies, tokens, email address, user ID, or pool ID.
   - type: input
     id: ha_version
     attributes:

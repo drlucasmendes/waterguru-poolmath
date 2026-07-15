@@ -1,6 +1,16 @@
 # WaterGuru to PoolMath
 
 
+> [!WARNING]
+> **Unofficial community project**
+>
+> This project is not affiliated with, endorsed by, sponsored by, or supported
+> by Trouble Free Pool, PoolMath, or WaterGuru. PoolMath does not provide a
+> documented public write API for this use case. This integration communicates
+> with backend endpoints used by the PoolMath mobile application and may stop
+> working if those services change.
+
+
 ## Fixes in v1.2.3
 
 - Existing installations upgraded from v1.2.0 no longer fail when the new
@@ -171,11 +181,56 @@ Automatic scheduled runs compare selected values and source entity update timest
 2. Restart Home Assistant.
 3. Add the integration from **Settings → Devices & services**.
 
-## Security
 
-Never publish PoolMath passwords, Basic authorization headers, cookies, or
-tokens. Diagnostics redact authentication fields. Rotate PoolMath credentials
-after accidental exposure.
+## Disclaimer and responsible use
+
+This project is an independent community effort and is not affiliated with,
+endorsed by, sponsored by, or supported by Trouble Free Pool, PoolMath, or
+WaterGuru.
+
+PoolMath does not provide a documented public write API for this integration.
+The software communicates with backend endpoints used by the official PoolMath
+mobile application. Those endpoints, authentication methods, payloads, and
+service limits may change at any time without notice.
+
+The integration is intentionally designed to minimize traffic to PoolMath by:
+
+- uploading only the latest WaterGuru test
+- using a configurable once-per-day schedule
+- preventing duplicate automatic submissions
+- avoiding continuous polling for uploads
+- avoiding automatic historical backfilling
+- providing manual submission controls only when the user explicitly triggers them
+
+Please use this project responsibly. Excessive requests, aggressive retry
+loops, or attempts to backfill large amounts of historical data may place
+unnecessary load on third-party services and could result in rate limiting or
+account restrictions.
+
+This software is provided under the MIT License and is supplied **"AS IS"**,
+without warranty of any kind. Use it at your own risk. The author is not
+responsible for data loss, duplicate or incorrect records, service
+interruptions, account restrictions, equipment operation, chemical dosing
+decisions, property damage, personal injury, or changes to third-party
+services.
+
+Review all uploaded measurements and chemical recommendations before acting on
+them. This integration should not be treated as a safety system or as a
+substitute for independent water testing and responsible pool maintenance.
+
+## Privacy and credential safety
+
+PoolMath credentials and authorization values are sensitive.
+
+- Never post your PoolMath password, Basic authorization header, cookies, or
+  tokens in GitHub issues, forum posts, screenshots, or logs.
+- The login password is used only during setup or reauthentication and is not
+  stored by the integration.
+- Home Assistant stores the resulting PoolMath authorization token in the
+  config entry.
+- Rotate your PoolMath credentials after any accidental exposure.
+- Review diagnostics before sharing them, even though known authentication
+  fields are redacted.
 
 ## Development
 
