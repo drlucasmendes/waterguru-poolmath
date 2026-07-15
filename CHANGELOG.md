@@ -1,5 +1,20 @@
 # Changelog
 
+
+## 1.1.0
+
+- Add recommended PoolMath email/password login in the Home Assistant config
+  flow.
+- Generate the PoolMath Basic authorization from `userId` and the newest
+  matching device authorization token.
+- Discover active PoolMath pools automatically through `/pools/list`.
+- Add a pool-selection dropdown with pool name and volume.
+- Keep existing Basic authorization entry as an advanced fallback.
+- Add reauthentication using email and password after HTTP 401/403.
+- Do not store the PoolMath password.
+- Migrate existing v1.0.x config entries without requiring reconfiguration.
+
+
 ## 1.0.1
 
 - Move HACS installation to the beginning of the README and mark it recommended.

@@ -3,11 +3,38 @@
   "config": {
     "step": {
       "user": {
-        "title": "Connect WaterGuru sensors to PoolMath",
-        "description": "This uses PoolMath's unofficial mobile-app endpoint. Enter the complete Authorization header beginning with `Basic `. Required WaterGuru values are FC, pH, and temperature. All other selectors are optional.",
+        "title": "Connect PoolMath",
+        "description": "Choose how Home Assistant should authenticate with PoolMath.",
         "data": {
-          "authorization": "PoolMath authorization header",
-          "pool_id": "PoolMath pool ID",
+          "auth_method": "Authentication method"
+        }
+      },
+      "login": {
+        "title": "Sign in to PoolMath",
+        "description": "Your password is used only to obtain a PoolMath authorization token and is not saved.",
+        "data": {
+          "email": "PoolMath email",
+          "password": "PoolMath password"
+        }
+      },
+      "basic": {
+        "title": "Use an existing authorization",
+        "description": "Advanced option: enter the complete value beginning with `Basic `.",
+        "data": {
+          "authorization": "PoolMath authorization header"
+        }
+      },
+      "pool": {
+        "title": "Select a PoolMath pool",
+        "description": "Choose the pool that will receive WaterGuru measurements.",
+        "data": {
+          "pool_id": "Pool"
+        }
+      },
+      "sensors": {
+        "title": "Select WaterGuru sensors",
+        "description": "Free chlorine, pH, and temperature are required. Other values are optional.",
+        "data": {
           "fc_entity": "Free chlorine",
           "ph_entity": "pH",
           "temperature_entity": "Water temperature",
@@ -25,33 +52,33 @@
           "iron_entity": "Iron"
         },
         "data_description": {
-          "authorization": "Complete value, including the word Basic and the encoded credential.",
-          "pool_id": "UUID of the destination PoolMath pool.",
-          "fc_entity": "Numeric free chlorine sensor in ppm.",
-          "ph_entity": "Numeric pH sensor.",
-          "temperature_entity": "Water temperature sensor. Celsius is converted to Fahrenheit.",
-          "total_hardness_entity": "Recorded in diagnostics only because PoolMath has no total-hardness field.",
-          "phosphate_entity": "Recorded in diagnostics only because PoolMath test logs have no phosphate field.",
-          "copper_entity": "Recorded in diagnostics only because PoolMath test logs have no copper field.",
-          "iron_entity": "Recorded in diagnostics only because PoolMath test logs have no iron field."
+          "temperature_entity": "Celsius is converted to Fahrenheit automatically.",
+          "total_hardness_entity": "Stored in diagnostics only because PoolMath has no matching field.",
+          "phosphate_entity": "Stored in diagnostics only because PoolMath has no matching field.",
+          "copper_entity": "Stored in diagnostics only because PoolMath has no matching field.",
+          "iron_entity": "Stored in diagnostics only because PoolMath has no matching field."
         }
       },
-      "reauth_confirm": {
-        "title": "Update PoolMath authorization",
-        "description": "Enter a fresh complete Basic authorization header.",
+      "reauth_login": {
+        "title": "Reconnect PoolMath",
+        "description": "Enter your PoolMath credentials to generate a fresh authorization token. Your password is not saved.",
         "data": {
-          "authorization": "PoolMath authorization header"
+          "email": "PoolMath email",
+          "password": "PoolMath password"
         }
       }
     },
     "error": {
       "authorization_format": "The value must begin with Basic followed by the encoded credential.",
-      "invalid_pool_id": "The pool ID does not look valid.",
-      "invalid_time_zone": "Select a valid IANA time zone."
+      "cannot_connect": "Could not connect to PoolMath. Check your internet connection and try again.",
+      "invalid_auth": "PoolMath rejected the credentials or authorization.",
+      "invalid_time_zone": "Select a valid IANA time zone.",
+      "no_pools": "No active pools were found in this PoolMath account.",
+      "pool_not_found": "The configured pool is no longer available in this account."
     },
     "abort": {
       "already_configured": "This PoolMath pool is already configured.",
-      "reauth_successful": "Authorization updated successfully."
+      "reauth_successful": "PoolMath authentication was updated successfully."
     }
   },
   "options": {

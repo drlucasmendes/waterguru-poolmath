@@ -6,7 +6,15 @@ DOMAIN = "waterguru_poolmath"
 PLATFORMS = [Platform.BUTTON, Platform.SENSOR]
 
 CONF_AUTHORIZATION = "authorization"
+CONF_AUTH_METHOD = "auth_method"
+CONF_EMAIL = "email"
+CONF_PASSWORD = "password"
 CONF_POOL_ID = "pool_id"
+CONF_POOL_NAME = "pool_name"
+CONF_USER_ID = "user_id"
+
+AUTH_METHOD_LOGIN = "login"
+AUTH_METHOD_BASIC = "basic"
 
 # Required daily WaterGuru/SENSE measurements.
 CONF_FC_ENTITY = "fc_entity"
@@ -56,8 +64,13 @@ DEFAULT_SUBMIT_TIME = "10:30:00"
 DEFAULT_AUTO_SUBMIT = True
 DEFAULT_MAX_READING_AGE_HOURS = 30
 
-API_URL = "https://api.poolmathapp.com/testlogs"
+API_BASE_URL = "https://api.poolmathapp.com"
+API_AUTH_URL = f"{API_BASE_URL}/auth"
+API_POOLS_URL = f"{API_BASE_URL}/pools/list"
+API_TESTLOGS_URL = f"{API_BASE_URL}/testlogs"
+
 CLIENT_VERSION = "512 (512371)"
+LOGIN_DEVICE_NAME = "Home Assistant WaterGuru to PoolMath"
 ORIGIN = "WaterGuru"
 
 STORAGE_VERSION = 1

@@ -8,7 +8,7 @@ from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.core import HomeAssistant
 
 from . import WaterGuruPoolMathConfigEntry
-from .const import CONF_AUTHORIZATION
+from .const import CONF_AUTHORIZATION, CONF_EMAIL, CONF_PASSWORD
 
 
 async def async_get_config_entry_diagnostics(
@@ -17,7 +17,7 @@ async def async_get_config_entry_diagnostics(
 ) -> dict[str, Any]:
     """Return redacted diagnostics."""
     return {
-        "entry": async_redact_data(dict(entry.data), {CONF_AUTHORIZATION}),
+        "entry": async_redact_data(dict(entry.data), {CONF_AUTHORIZATION, CONF_EMAIL, CONF_PASSWORD}),
         "options": dict(entry.options),
         "runtime": {
             "status": entry.runtime_data.manager.state.status,

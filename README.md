@@ -3,35 +3,51 @@
 Sync WaterGuru measurements from Home Assistant to PoolMath once per day.
 
 > PoolMath does not publish this write API. This integration uses the mobile-app
-> endpoint discovered from the user's own account traffic. It may require an
-> update if PoolMath changes authentication or its payload.
+> API discovered from the user's own account traffic. It may require an update
+> if PoolMath changes authentication or payload formats.
 
 ## Recommended installation: HACS
 
 1. Open **HACS → Integrations**.
 2. Open the three-dot menu and select **Custom repositories**.
 3. Add:
-   `drlucasmendes/waterguru-poolmath`
+   `https://github.com/drlucasmendes/waterguru-poolmath`
 4. Select repository type **Integration**.
 5. Install **WaterGuru to PoolMath**.
 6. Restart Home Assistant.
 7. Open **Settings → Devices & services → Add integration** and search for
    **WaterGuru to PoolMath**.
 
-HACS is the recommended installation method because updates and fixes can be
-installed directly from Home Assistant.
+HACS is recommended because future fixes and releases can be installed directly
+from Home Assistant.
 
-## Configuration
+## New in v1.1.0: automatic login and pool discovery
 
-The setup form requires:
+The recommended setup no longer requires manually finding a Basic credential or
+Pool ID.
 
-- Complete PoolMath authorization value beginning with `Basic `
-- PoolMath pool ID
-- WaterGuru free chlorine sensor
-- WaterGuru pH sensor
-- WaterGuru water-temperature sensor
+1. Choose **PoolMath email and password**.
+2. Sign in.
+3. The integration creates the PoolMath Basic authorization automatically.
+4. It retrieves all active PoolMath pools.
+5. Select the destination pool from a dropdown.
+6. Select the WaterGuru sensors.
 
-It also accepts these optional WaterGuru values and sends them when selected:
+The password is used only during the config flow and is not stored. Home
+Assistant stores the resulting PoolMath authorization token.
+
+An advanced setup option remains available for users who want to paste an
+existing `Basic ...` authorization value.
+
+## Supported WaterGuru values
+
+Required and uploaded:
+
+- Free chlorine
+- pH
+- Water temperature
+
+Optional and uploaded to matching PoolMath fields:
 
 - Combined chlorine
 - CYA
@@ -42,21 +58,20 @@ It also accepts these optional WaterGuru values and sends them when selected:
 - TDS
 - CSI
 
-These WaterGuru values may also be selected, but PoolMath's captured test-log
-API has no matching fields, so they are retained only in status diagnostics and
-duplicate detection:
+Optional values retained only in diagnostics because the captured PoolMath
+test-log API has no matching fields:
 
 - Total hardness
 - Phosphate
 - Copper
 - Iron
 
-## Daily time and time zone
+## Daily schedule and time zone
 
-Open the integration and choose **Configure**. You can set:
+Open the integration and choose **Configure**. Set:
 
 - automatic daily submission on or off
-- submission hour
+- submission time
 - IANA time zone, such as `America/Chicago`
 - maximum acceptable age of selected WaterGuru readings
 
@@ -69,20 +84,33 @@ The scheduler follows daylight-saving changes in the selected time zone.
 - Last successful submission timestamp
 - Last PoolMath HTTP status
 
-The status sensor also shows:
+The status sensor also includes:
 
 - next scheduled run in UTC
-- configured local time and zone
-- last values sent
-- selected WaterGuru values without PoolMath mappings
+- configured local time and time zone
+- last values uploaded
+- optional unmapped WaterGuru values
 - last PoolMath log ID
 - latest error
 
+## Authentication and reauthentication
+
+PoolMath login returns a user ID and device authorization token. The integration
+constructs:
+
+```text
+Basic Base64(userId:token)
+```
+
+Only that resulting authorization is stored. If PoolMath later returns HTTP 401
+or 403, Home Assistant starts a reauthentication flow asking for email and
+password again.
+
 ## Duplicate protection
 
-Automatic scheduled runs compare the selected values and their Home Assistant
-update timestamps with the last successful submission. An identical reading is
-not uploaded twice. The manual button intentionally forces a new submission.
+Automatic scheduled runs compare selected values and source entity update
+timestamps with the last successful submission. An identical reading is not
+uploaded twice. The manual button intentionally forces a submission.
 
 ## Manual installation
 
@@ -93,9 +121,9 @@ not uploaded twice. The manual button intentionally forces a new submission.
 
 ## Security
 
-Never publish the PoolMath Basic authorization header, cookies, or credentials.
-Diagnostics redact the authorization value. Rotate the credential after any
-accidental exposure.
+Never publish PoolMath passwords, Basic authorization headers, cookies, or
+tokens. Diagnostics redact authentication fields. Rotate PoolMath credentials
+after accidental exposure.
 
 ## Development
 
@@ -105,5 +133,4 @@ cd waterguru-poolmath
 ```
 
 Make changes under `custom_components/waterguru_poolmath/`. Update the version
-in `manifest.json`, commit, push, and publish a GitHub release using the same
-semantic version tag.
+in `manifest.json`, commit, push, tag the commit, and publish a GitHub release.

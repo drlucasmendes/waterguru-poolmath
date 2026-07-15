@@ -11,8 +11,19 @@ from homeassistant import config_entries
 from homeassistant.config_entries import ConfigFlowResult
 from homeassistant.core import callback
 from homeassistant.helpers import selector
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
+from .api import (
+    PoolMathAuthError,
+    PoolMathClient,
+    PoolMathError,
+    PoolMathNoPoolsError,
+    PoolMathPool,
+)
 from .const import (
+    AUTH_METHOD_BASIC,
+    AUTH_METHOD_LOGIN,
+    CONF_AUTH_METHOD,
     CONF_AUTHORIZATION,
     CONF_BOR_ENTITY,
     CONF_CC_ENTITY,
@@ -20,16 +31,20 @@ from .const import (
     CONF_COPPER_ENTITY,
     CONF_CSI_ENTITY,
     CONF_CYA_ENTITY,
+    CONF_EMAIL,
     CONF_FC_ENTITY,
     CONF_IRON_ENTITY,
+    CONF_PASSWORD,
     CONF_PH_ENTITY,
     CONF_PHOSPHATE_ENTITY,
     CONF_POOL_ID,
+    CONF_POOL_NAME,
     CONF_SALT_ENTITY,
     CONF_TA_ENTITY,
     CONF_TDS_ENTITY,
     CONF_TEMPERATURE_ENTITY,
     CONF_TOTAL_HARDNESS_ENTITY,
+    CONF_USER_ID,
     DEFAULT_AUTO_SUBMIT,
     DEFAULT_MAX_READING_AGE_HOURS,
     DEFAULT_SUBMIT_TIME,
@@ -48,44 +63,194 @@ def _entity_selector() -> selector.EntitySelector:
 class WaterGuruPoolMathConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow."""
 
-    VERSION = 1
+    VERSION = 2
+    MINOR_VERSION = 0
+
+    def __init__(self) -> None:
+        self._setup_data: dict[str, Any] = {}
+        self._pools: list[PoolMathPool] = []
+        self._default_pool_id: str | None = None
+        self._reauth_entry: config_entries.ConfigEntry | None = None
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Handle initial setup."""
+        """Choose an authentication method."""
+        if user_input is not None:
+            method = user_input[CONF_AUTH_METHOD]
+            if method == AUTH_METHOD_LOGIN:
+                return await self.async_step_login()
+            return await self.async_step_basic()
+
+        return self.async_show_form(
+            step_id="user",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_AUTH_METHOD,
+                        default=AUTH_METHOD_LOGIN,
+                    ): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=[
+                                {
+                                    "value": AUTH_METHOD_LOGIN,
+                                    "label": "PoolMath email and password (recommended)",
+                                },
+                                {
+                                    "value": AUTH_METHOD_BASIC,
+                                    "label": "Existing Basic authorization (advanced)",
+                                },
+                            ],
+                            mode=selector.SelectSelectorMode.LIST,
+                        )
+                    )
+                }
+            ),
+        )
+
+    async def async_step_login(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Authenticate with PoolMath email and password."""
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            client = PoolMathClient(async_get_clientsession(self.hass))
+            try:
+                login = await client.async_login(
+                    email=user_input[CONF_EMAIL],
+                    password=user_input[CONF_PASSWORD],
+                )
+                pools = await client.async_get_pools(login.authorization)
+            except PoolMathAuthError:
+                errors["base"] = "invalid_auth"
+            except PoolMathNoPoolsError:
+                errors["base"] = "no_pools"
+            except PoolMathError:
+                errors["base"] = "cannot_connect"
+            else:
+                self._setup_data = {
+                    CONF_AUTH_METHOD: AUTH_METHOD_LOGIN,
+                    CONF_AUTHORIZATION: login.authorization,
+                    CONF_USER_ID: login.user_id,
+                }
+                self._pools = pools
+                self._default_pool_id = login.default_pool_id
+                return await self.async_step_pool()
+
+        return self.async_show_form(
+            step_id="login",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_EMAIL): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.EMAIL
+                        )
+                    ),
+                    vol.Required(CONF_PASSWORD): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.PASSWORD
+                        )
+                    ),
+                }
+            ),
+            errors=errors,
+        )
+
+    async def async_step_basic(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Use an existing Basic authorization header."""
         errors: dict[str, str] = {}
 
         if user_input is not None:
             authorization = user_input[CONF_AUTHORIZATION].strip()
-            pool_id = user_input[CONF_POOL_ID].strip()
-
             if not authorization.lower().startswith("basic "):
                 errors[CONF_AUTHORIZATION] = "authorization_format"
-            elif len(pool_id) < 20:
-                errors[CONF_POOL_ID] = "invalid_pool_id"
             else:
-                await self.async_set_unique_id(pool_id)
-                self._abort_if_unique_id_configured()
-                user_input[CONF_AUTHORIZATION] = authorization
-                user_input[CONF_POOL_ID] = pool_id
-                return self.async_create_entry(
-                    title="WaterGuru → PoolMath",
-                    data=user_input,
-                    options={
-                        OPT_AUTO_SUBMIT: DEFAULT_AUTO_SUBMIT,
-                        OPT_SUBMIT_TIME: DEFAULT_SUBMIT_TIME,
-                        OPT_TIME_ZONE: self.hass.config.time_zone,
-                        OPT_MAX_READING_AGE_HOURS: DEFAULT_MAX_READING_AGE_HOURS,
-                    },
-                )
+                client = PoolMathClient(async_get_clientsession(self.hass))
+                try:
+                    pools = await client.async_get_pools(authorization)
+                except PoolMathAuthError:
+                    errors["base"] = "invalid_auth"
+                except PoolMathNoPoolsError:
+                    errors["base"] = "no_pools"
+                except PoolMathError:
+                    errors["base"] = "cannot_connect"
+                else:
+                    self._setup_data = {
+                        CONF_AUTH_METHOD: AUTH_METHOD_BASIC,
+                        CONF_AUTHORIZATION: authorization,
+                    }
+                    self._pools = pools
+                    return await self.async_step_pool()
+
+        return self.async_show_form(
+            step_id="basic",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_AUTHORIZATION): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.PASSWORD
+                        )
+                    ),
+                }
+            ),
+            errors=errors,
+        )
+
+    async def async_step_pool(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Select a PoolMath pool."""
+        if user_input is not None:
+            pool_id = user_input[CONF_POOL_ID]
+            selected = next(pool for pool in self._pools if pool.pool_id == pool_id)
+            self._setup_data.update(
+                {
+                    CONF_POOL_ID: selected.pool_id,
+                    CONF_POOL_NAME: selected.name,
+                }
+            )
+            await self.async_set_unique_id(selected.pool_id)
+            self._abort_if_unique_id_configured()
+            return await self.async_step_sensors()
+
+        options = {pool.pool_id: pool.display_name for pool in self._pools}
+        default = (
+            self._default_pool_id
+            if self._default_pool_id in options
+            else self._pools[0].pool_id
+        )
+        return self.async_show_form(
+            step_id="pool",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_POOL_ID, default=default): vol.In(options)
+                }
+            ),
+        )
+
+    async def async_step_sensors(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Select WaterGuru entities."""
+        if user_input is not None:
+            data = {**self._setup_data, **user_input}
+            title = data.get(CONF_POOL_NAME, "WaterGuru → PoolMath")
+            return self.async_create_entry(
+                title=title,
+                data=data,
+                options={
+                    OPT_AUTO_SUBMIT: DEFAULT_AUTO_SUBMIT,
+                    OPT_SUBMIT_TIME: DEFAULT_SUBMIT_TIME,
+                    OPT_TIME_ZONE: self.hass.config.time_zone,
+                    OPT_MAX_READING_AGE_HOURS: DEFAULT_MAX_READING_AGE_HOURS,
+                },
+            )
 
         schema = vol.Schema(
             {
-                vol.Required(CONF_AUTHORIZATION): selector.TextSelector(
-                    selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
-                ),
-                vol.Required(CONF_POOL_ID): str,
                 vol.Required(CONF_FC_ENTITY): _entity_selector(),
                 vol.Required(CONF_PH_ENTITY): _entity_selector(),
                 vol.Required(CONF_TEMPERATURE_ENTITY): _entity_selector(),
@@ -103,11 +268,7 @@ class WaterGuruPoolMathConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Optional(CONF_IRON_ENTITY): _entity_selector(),
             }
         )
-        return self.async_show_form(
-            step_id="user",
-            data_schema=schema,
-            errors=errors,
-        )
+        return self.async_show_form(step_id="sensors", data_schema=schema)
 
     async def async_step_reauth(
         self, entry_data: dict[str, Any]
@@ -116,32 +277,55 @@ class WaterGuruPoolMathConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._reauth_entry = self.hass.config_entries.async_get_entry(
             self.context["entry_id"]
         )
-        return await self.async_step_reauth_confirm()
+        return await self.async_step_reauth_login()
 
-    async def async_step_reauth_confirm(
+    async def async_step_reauth_login(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Accept a replacement authorization header."""
+        """Reauthenticate using PoolMath email and password."""
         errors: dict[str, str] = {}
+
         if user_input is not None:
-            authorization = user_input[CONF_AUTHORIZATION].strip()
-            if not authorization.lower().startswith("basic "):
-                errors[CONF_AUTHORIZATION] = "authorization_format"
-            else:
-                return self.async_update_reload_and_abort(
-                    self._reauth_entry,
-                    data_updates={CONF_AUTHORIZATION: authorization},
+            client = PoolMathClient(async_get_clientsession(self.hass))
+            try:
+                login = await client.async_login(
+                    email=user_input[CONF_EMAIL],
+                    password=user_input[CONF_PASSWORD],
                 )
+                pools = await client.async_get_pools(login.authorization)
+            except PoolMathAuthError:
+                errors["base"] = "invalid_auth"
+            except PoolMathError:
+                errors["base"] = "cannot_connect"
+            else:
+                assert self._reauth_entry is not None
+                current_pool = self._reauth_entry.data[CONF_POOL_ID]
+                if current_pool not in {pool.pool_id for pool in pools}:
+                    errors["base"] = "pool_not_found"
+                else:
+                    return self.async_update_reload_and_abort(
+                        self._reauth_entry,
+                        data_updates={
+                            CONF_AUTH_METHOD: AUTH_METHOD_LOGIN,
+                            CONF_AUTHORIZATION: login.authorization,
+                            CONF_USER_ID: login.user_id,
+                        },
+                    )
 
         return self.async_show_form(
-            step_id="reauth_confirm",
+            step_id="reauth_login",
             data_schema=vol.Schema(
                 {
-                    vol.Required(CONF_AUTHORIZATION): selector.TextSelector(
+                    vol.Required(CONF_EMAIL): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.EMAIL
+                        )
+                    ),
+                    vol.Required(CONF_PASSWORD): selector.TextSelector(
                         selector.TextSelectorConfig(
                             type=selector.TextSelectorType.PASSWORD
                         )
-                    )
+                    ),
                 }
             ),
             errors=errors,

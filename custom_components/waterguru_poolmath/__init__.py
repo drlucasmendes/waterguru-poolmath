@@ -57,3 +57,22 @@ async def _async_reload_entry(
 ) -> None:
     """Reload after options change."""
     await hass.config_entries.async_reload(entry.entry_id)
+
+
+
+async def async_migrate_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+) -> bool:
+    """Migrate older config entries."""
+    if entry.version < 2:
+        new_data = dict(entry.data)
+        new_data.setdefault("auth_method", "basic")
+        new_data.setdefault("pool_name", entry.title)
+        hass.config_entries.async_update_entry(
+            entry,
+            data=new_data,
+            version=2,
+            minor_version=0,
+        )
+    return True
