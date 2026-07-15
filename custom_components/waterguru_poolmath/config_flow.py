@@ -214,7 +214,7 @@ class WaterGuruPoolMathConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             )
             await self.async_set_unique_id(selected.pool_id)
             self._abort_if_unique_id_configured()
-            return await self.async_step_sensors()
+            return await self.async_step_waterguru_tests()
 
         options = {pool.pool_id: pool.display_name for pool in self._pools}
         default = (
@@ -231,44 +231,65 @@ class WaterGuruPoolMathConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             ),
         )
 
-    async def async_step_sensors(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        """Select WaterGuru entities."""
-        if user_input is not None:
-            data = {**self._setup_data, **user_input}
-            title = data.get(CONF_POOL_NAME, "WaterGuru → PoolMath")
-            return self.async_create_entry(
-                title=title,
-                data=data,
-                options={
-                    OPT_AUTO_SUBMIT: DEFAULT_AUTO_SUBMIT,
-                    OPT_SUBMIT_TIME: DEFAULT_SUBMIT_TIME,
-                    OPT_TIME_ZONE: self.hass.config.time_zone,
-                    OPT_MAX_READING_AGE_HOURS: DEFAULT_MAX_READING_AGE_HOURS,
-                },
-            )
 
-        schema = vol.Schema(
-            {
-                vol.Required(CONF_FC_ENTITY): _entity_selector(),
-                vol.Required(CONF_PH_ENTITY): _entity_selector(),
-                vol.Required(CONF_TEMPERATURE_ENTITY): _entity_selector(),
-                vol.Optional(CONF_CC_ENTITY): _entity_selector(),
-                vol.Optional(CONF_CYA_ENTITY): _entity_selector(),
-                vol.Optional(CONF_CH_ENTITY): _entity_selector(),
-                vol.Optional(CONF_TA_ENTITY): _entity_selector(),
-                vol.Optional(CONF_SALT_ENTITY): _entity_selector(),
-                vol.Optional(CONF_BOR_ENTITY): _entity_selector(),
-                vol.Optional(CONF_TDS_ENTITY): _entity_selector(),
-                vol.Optional(CONF_CSI_ENTITY): _entity_selector(),
-                vol.Optional(CONF_TOTAL_HARDNESS_ENTITY): _entity_selector(),
-                vol.Optional(CONF_PHOSPHATE_ENTITY): _entity_selector(),
-                vol.Optional(CONF_COPPER_ENTITY): _entity_selector(),
-                vol.Optional(CONF_IRON_ENTITY): _entity_selector(),
-            }
+async def async_step_waterguru_tests(
+    self, user_input: dict[str, Any] | None = None
+) -> ConfigFlowResult:
+    """Select the main WaterGuru test results."""
+    if user_input is not None:
+        self._setup_data.update(user_input)
+        return await self.async_step_advanced_sensors()
+
+    schema = vol.Schema(
+        {
+            vol.Required(CONF_FC_ENTITY): _entity_selector(),
+            vol.Required(CONF_PH_ENTITY): _entity_selector(),
+            vol.Optional(CONF_TA_ENTITY): _entity_selector(),
+            vol.Optional(CONF_CH_ENTITY): _entity_selector(),
+            vol.Optional(CONF_CYA_ENTITY): _entity_selector(),
+            vol.Required(CONF_TEMPERATURE_ENTITY): _entity_selector(),
+        }
+    )
+    return self.async_show_form(
+        step_id="waterguru_tests",
+        data_schema=schema,
+    )
+
+async def async_step_advanced_sensors(
+    self, user_input: dict[str, Any] | None = None
+) -> ConfigFlowResult:
+    """Select advanced optional WaterGuru values."""
+    if user_input is not None:
+        data = {**self._setup_data, **user_input}
+        title = data.get(CONF_POOL_NAME, "WaterGuru → PoolMath")
+        return self.async_create_entry(
+            title=title,
+            data=data,
+            options={
+                OPT_AUTO_SUBMIT: DEFAULT_AUTO_SUBMIT,
+                OPT_SUBMIT_TIME: DEFAULT_SUBMIT_TIME,
+                OPT_TIME_ZONE: self.hass.config.time_zone,
+                OPT_MAX_READING_AGE_HOURS: DEFAULT_MAX_READING_AGE_HOURS,
+            },
         )
-        return self.async_show_form(step_id="sensors", data_schema=schema)
+
+    schema = vol.Schema(
+        {
+            vol.Optional(CONF_CC_ENTITY): _entity_selector(),
+            vol.Optional(CONF_SALT_ENTITY): _entity_selector(),
+            vol.Optional(CONF_BOR_ENTITY): _entity_selector(),
+            vol.Optional(CONF_TDS_ENTITY): _entity_selector(),
+            vol.Optional(CONF_CSI_ENTITY): _entity_selector(),
+            vol.Optional(CONF_TOTAL_HARDNESS_ENTITY): _entity_selector(),
+            vol.Optional(CONF_PHOSPHATE_ENTITY): _entity_selector(),
+            vol.Optional(CONF_COPPER_ENTITY): _entity_selector(),
+            vol.Optional(CONF_IRON_ENTITY): _entity_selector(),
+        }
+    )
+    return self.async_show_form(
+        step_id="advanced_sensors",
+        data_schema=schema,
+    )
 
     async def async_step_reauth(
         self, entry_data: dict[str, Any]

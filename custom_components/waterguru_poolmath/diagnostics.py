@@ -26,6 +26,7 @@ async def async_get_config_entry_diagnostics(
             "last_http_status": entry.runtime_data.manager.state.last_http_status,
             "last_error": entry.runtime_data.manager.state.last_error,
             "last_log_id": entry.runtime_data.manager.state.last_log_id,
+            "last_measurement_timestamp": entry.runtime_data.manager.state.last_measurement_timestamp,
             "last_values": entry.runtime_data.manager.state.last_values,
             "last_unmapped_values": entry.runtime_data.manager.state.last_unmapped_values,
         },

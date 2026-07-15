@@ -61,6 +61,7 @@ class RuntimeState:
     last_error: str | None = None
     last_log_id: str | None = None
     last_signature: str | None = None
+    last_measurement_timestamp: str | None = None
     last_values: dict[str, float] = field(default_factory=dict)
     last_unmapped_values: dict[str, float] = field(default_factory=dict)
 
@@ -97,6 +98,7 @@ class WaterGuruPoolMathManager:
             last_error=saved.get("last_error"),
             last_log_id=saved.get("last_log_id"),
             last_signature=saved.get("last_signature"),
+            last_measurement_timestamp=saved.get("last_measurement_timestamp"),
             last_values=saved.get("last_values", {}),
             last_unmapped_values=saved.get("last_unmapped_values", {}),
         )
@@ -135,6 +137,7 @@ class WaterGuruPoolMathManager:
                 "last_error": self.state.last_error,
                 "last_log_id": self.state.last_log_id,
                 "last_signature": self.state.last_signature,
+                "last_measurement_timestamp": self.state.last_measurement_timestamp,
                 "last_values": self.state.last_values,
                 "last_unmapped_values": self.state.last_unmapped_values,
             }
@@ -340,6 +343,9 @@ class WaterGuruPoolMathManager:
             self.state.last_http_status = result.status
             self.state.last_log_id = result.log_id
             self.state.last_signature = signature
+            self.state.last_measurement_timestamp = newest.astimezone(
+                dt_util.UTC
+            ).strftime("%Y-%m-%dT%H:%M:%SZ")
             self.state.last_values = values
             self.state.last_unmapped_values = unmapped_values
             self.state.last_error = None
@@ -370,6 +376,53 @@ class WaterGuruPoolMathManager:
             await self._async_save()
             return False
 
+
+    async def async_resubmit_last_test(self) -> bool:
+        """Force-upload the last successfully captured test values again."""
+        self.state.status = STATUS_SUBMITTING
+        self.state.last_attempt = dt_util.utcnow().isoformat()
+        self.state.last_error = None
+        self._notify()
+
+        if not self.state.last_values or not self.state.last_measurement_timestamp:
+            self.state.status = STATUS_INVALID
+            self.state.last_error = (
+                "No previous successful WaterGuru test is available to resubmit"
+            )
+            await self._async_save()
+            return False
+
+        try:
+            result = await self.client.async_submit_testlog(
+                values=dict(self.state.last_values),
+                log_timestamp=self.state.last_measurement_timestamp,
+            )
+            self.state.status = STATUS_SUCCESS
+            self.state.last_submission = dt_util.utcnow().isoformat()
+            self.state.last_http_status = result.status
+            self.state.last_log_id = result.log_id
+            self.state.last_error = None
+            await self._async_save()
+            return True
+        except PoolMathAuthError as err:
+            self.state.status = STATUS_AUTH_ERROR
+            self.state.last_http_status = 401
+            self.state.last_error = str(err)
+            await self._async_save()
+            self.entry.async_start_reauth(self.hass)
+            return False
+        except PoolMathError as err:
+            self.state.status = STATUS_ERROR
+            self.state.last_error = str(err)
+            await self._async_save()
+            return False
+        except Exception as err:
+            _LOGGER.exception("Unexpected last-test resubmission error")
+            self.state.status = STATUS_ERROR
+            self.state.last_error = f"Unexpected error: {err}"
+            await self._async_save()
+            return False
+
     @property
     def extra_attributes(self) -> dict[str, Any]:
         """Common diagnostic attributes for entities."""
@@ -379,6 +432,7 @@ class WaterGuruPoolMathManager:
             ATTR_LAST_VALUES: self.state.last_values,
             ATTR_LAST_UNMAPPED_VALUES: self.state.last_unmapped_values,
             ATTR_LAST_SIGNATURE: self.state.last_signature,
+            "last_measurement_timestamp": self.state.last_measurement_timestamp,
             "last_attempt": self.state.last_attempt,
             "last_http_status": self.state.last_http_status,
             "automatic_submission_enabled": self.entry.options.get(

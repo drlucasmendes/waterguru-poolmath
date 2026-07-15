@@ -1,6 +1,21 @@
 # Changelog
 
 
+## 1.1.1
+
+- Add a **Force resync last test** button that resubmits the persisted last
+  successful test using its original measurement timestamp.
+- Rename the existing button to **Submit current values** for clarity.
+- Persist the source measurement timestamp with runtime state and diagnostics.
+- Reorganize setup so the standard WaterGuru test values appear first:
+  free chlorine, pH, total alkalinity, calcium hardness, and CYA, followed by
+  water temperature.
+- Move all remaining variables to a separate advanced optional step.
+- Keep TA, CH, and CYA optional to avoid unintentionally relogging stale manual
+  WaterGuru results.
+
+
+
 ## 1.1.0
 
 - Add recommended PoolMath email/password login in the Home Assistant config

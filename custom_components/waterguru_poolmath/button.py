@@ -1,4 +1,4 @@
-"""Manual submission button for WaterGuru to PoolMath."""
+"""Manual submission buttons for WaterGuru to PoolMath."""
 
 from __future__ import annotations
 
@@ -15,16 +15,20 @@ async def async_setup_entry(
     entry: WaterGuruPoolMathConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    """Set up the manual-submit button."""
+    """Set up manual submission buttons."""
+    manager = entry.runtime_data.manager
     async_add_entities(
-        [SubmitNowButton(entry, entry.runtime_data.manager)]
+        [
+            SubmitNowButton(entry, manager),
+            ResubmitLastTestButton(entry, manager),
+        ]
     )
 
 
 class SubmitNowButton(WaterGuruPoolMathEntity, ButtonEntity):
-    """Submit current WaterGuru values immediately."""
+    """Read the currently selected entities and submit them immediately."""
 
-    _attr_name = "Submit now"
+    _attr_name = "Submit current values"
     _attr_icon = "mdi:cloud-upload-outline"
 
     def __init__(self, entry, manager) -> None:
@@ -32,5 +36,20 @@ class SubmitNowButton(WaterGuruPoolMathEntity, ButtonEntity):
         self._attr_unique_id = f"{entry.entry_id}_submit_now"
 
     async def async_press(self) -> None:
-        """Submit even if the reading matches the previous signature."""
+        """Submit current values even if their signature matches the previous one."""
         await self._manager.async_submit(force=True)
+
+
+class ResubmitLastTestButton(WaterGuruPoolMathEntity, ButtonEntity):
+    """Force-resubmit the exact last successfully captured test."""
+
+    _attr_name = "Force resync last test"
+    _attr_icon = "mdi:sync-alert"
+
+    def __init__(self, entry, manager) -> None:
+        super().__init__(entry, manager)
+        self._attr_unique_id = f"{entry.entry_id}_resubmit_last_test"
+
+    async def async_press(self) -> None:
+        """Upload the persisted last test again with its original test timestamp."""
+        await self._manager.async_resubmit_last_test()

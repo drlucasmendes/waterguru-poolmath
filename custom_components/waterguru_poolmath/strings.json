@@ -31,17 +31,37 @@
           "pool_id": "Pool"
         }
       },
-      "sensors": {
-        "title": "Select WaterGuru sensors",
-        "description": "Free chlorine, pH, and temperature are required. Other values are optional.",
+      "reauth_login": {
+        "title": "Reconnect PoolMath",
+        "description": "Enter your PoolMath credentials to generate a fresh authorization token. Your password is not saved.",
+        "data": {
+          "email": "PoolMath email",
+          "password": "PoolMath password"
+        }
+      },
+      "waterguru_tests": {
+        "title": "WaterGuru test results",
+        "description": "Select the five standard WaterGuru chemistry test values first. Free chlorine and pH are required. Total alkalinity, calcium hardness, and CYA may be left blank when you do not want older manual tests sent. Water temperature is also required.",
         "data": {
           "fc_entity": "Free chlorine",
           "ph_entity": "pH",
-          "temperature_entity": "Water temperature",
-          "cc_entity": "Combined chlorine",
-          "cya_entity": "CYA",
-          "ch_entity": "Calcium hardness",
           "ta_entity": "Total alkalinity",
+          "ch_entity": "Calcium hardness",
+          "cya_entity": "CYA",
+          "temperature_entity": "Water temperature"
+        },
+        "data_description": {
+          "ta_entity": "Optional. Leave blank to avoid re-logging an older manual result.",
+          "ch_entity": "Optional. Leave blank to avoid re-logging an older manual result.",
+          "cya_entity": "Optional. Leave blank to avoid re-logging an older manual result.",
+          "temperature_entity": "Celsius is converted to Fahrenheit automatically."
+        }
+      },
+      "advanced_sensors": {
+        "title": "Advanced optional values",
+        "description": "These values are optional. PoolMath-supported values are uploaded when selected. Values without a PoolMath field are retained only in diagnostics.",
+        "data": {
+          "cc_entity": "Combined chlorine",
           "salt_entity": "Salt",
           "bor_entity": "Borates",
           "tds_entity": "TDS",
@@ -52,19 +72,10 @@
           "iron_entity": "Iron"
         },
         "data_description": {
-          "temperature_entity": "Celsius is converted to Fahrenheit automatically.",
-          "total_hardness_entity": "Stored in diagnostics only because PoolMath has no matching field.",
-          "phosphate_entity": "Stored in diagnostics only because PoolMath has no matching field.",
-          "copper_entity": "Stored in diagnostics only because PoolMath has no matching field.",
-          "iron_entity": "Stored in diagnostics only because PoolMath has no matching field."
-        }
-      },
-      "reauth_login": {
-        "title": "Reconnect PoolMath",
-        "description": "Enter your PoolMath credentials to generate a fresh authorization token. Your password is not saved.",
-        "data": {
-          "email": "PoolMath email",
-          "password": "PoolMath password"
+          "total_hardness_entity": "Diagnostics only; PoolMath has no matching test-log field.",
+          "phosphate_entity": "Diagnostics only; PoolMath has no matching test-log field.",
+          "copper_entity": "Diagnostics only; PoolMath has no matching test-log field.",
+          "iron_entity": "Diagnostics only; PoolMath has no matching test-log field."
         }
       }
     },
@@ -103,7 +114,10 @@
   "entity": {
     "button": {
       "submit_now": {
-        "name": "Submit now"
+        "name": "Submit current values"
+      },
+      "resubmit_last_test": {
+        "name": "Force resync last test"
       }
     },
     "sensor": {

@@ -39,20 +39,21 @@ Assistant stores the resulting PoolMath authorization token.
 An advanced setup option remains available for users who want to paste an
 existing `Basic ...` authorization value.
 
-## Supported WaterGuru values
+## WaterGuru value organization
 
-Required and uploaded:
+The setup wizard first shows the five standard WaterGuru chemistry test values:
 
 - Free chlorine
 - pH
-- Water temperature
+- Total alkalinity
+- Calcium hardness
+- CYA
 
-Optional and uploaded to matching PoolMath fields:
+Water temperature is included on the same screen. Free chlorine, pH, and temperature are required. TA, CH, and CYA are optional so an older manual WaterGuru test is not repeatedly logged unless you intentionally select it.
+
+The advanced screen contains these optional PoolMath-supported values:
 
 - Combined chlorine
-- CYA
-- Calcium hardness
-- Total alkalinity
 - Salt
 - Borates
 - TDS
@@ -106,11 +107,12 @@ Only that resulting authorization is stored. If PoolMath later returns HTTP 401
 or 403, Home Assistant starts a reauthentication flow asking for email and
 password again.
 
-## Duplicate protection
+## Manual and forced synchronization
 
-Automatic scheduled runs compare selected values and source entity update
-timestamps with the last successful submission. An identical reading is not
-uploaded twice. The manual button intentionally forces a submission.
+- **Submit current values** reads the selected Home Assistant entities and uploads them immediately, even when they match the previous signature.
+- **Force resync last test** uploads the exact last successfully captured test again using its original measurement timestamp. This is useful after deleting the PoolMath log or when a prior sync needs to be repeated.
+
+Automatic scheduled runs compare selected values and source entity update timestamps with the last successful submission, so an identical reading is not uploaded twice.
 
 ## Manual installation
 
