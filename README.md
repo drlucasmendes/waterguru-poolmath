@@ -11,7 +11,7 @@ Sync WaterGuru measurements from Home Assistant to PoolMath once per day.
 1. Open **HACS → Integrations**.
 2. Open the three-dot menu and select **Custom repositories**.
 3. Add:
-   `https://github.com/drlucasmendes/waterguru-poolmath`
+   `drlucasmendes/waterguru-poolmath`
 4. Select repository type **Integration**.
 5. Install **WaterGuru to PoolMath**.
 6. Restart Home Assistant.
